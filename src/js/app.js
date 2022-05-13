@@ -20,21 +20,39 @@ App = {
       }
     });
 
-    return await App.initWeb3();
+    return App.initWeb3();
   },
 
   initWeb3: async function() {
-    /*
-     * Replace me...
-     */
+    if (window.ethereum) {
+      App.web3Provider = window.ethereum;
+      try {
+        // Request account access
+        // await window.ethereum.request({ method: "eth_requestAccounts" });
+        const accounts = await ethereum.request({ method: 'eth_accounts' });
+        console.log('metamask installed')
+        console.log(accounts)
+      } catch (error) {
+        // User denied account access...
+        console.error("User denied account access")
+      }
+    } else {
+      alert('please install metamask')
+    }
 
     return App.initContract();
   },
 
   initContract: function() {
-    /*
-     * Replace me...
-     */
+    $.getJSON('Adoption.json', function(data) {
+      const provider = new ethers.providers.Web3Provider(window.ethereum)
+      const signer = provider.getSigner()
+
+      const contract = new ethers.Contract("0xEC237dfa34CD626539Ecd4c003722BC0347FC4D8", data.abi, signer)
+      App.contracts.Adoption = contract
+
+      return App.markAdopted();
+    });
 
     return App.bindEvents();
   },
@@ -44,19 +62,29 @@ App = {
   },
 
   markAdopted: function() {
-    /*
-     * Replace me...
-     */
+    console.log('mark adopted')
+    App.contracts.Adoption.getAdopters().then((adopters) => {
+      console.log(adopters)
+      for (i = 0; i < adopters.length; i++) {
+        if (adopters[i] !== '0x0000000000000000000000000000000000000000') {
+          $('.panel-pet').eq(i).find('button').text('Success').attr('disabled', true);
+        }
+      }
+    })
   },
 
-  handleAdopt: function(event) {
+  handleAdopt: async function (event) {
     event.preventDefault();
 
     var petId = parseInt($(event.target).data('id'));
-
-    /*
-     * Replace me...
-     */
+    const accounts = await ethereum.request({ method: 'eth_accounts' });
+    App.contracts.Adoption.adopt(petId, {from: accounts[0]})
+      .then(function(result) {
+        console.log(result)
+        return App.markAdopted();
+      }).catch(function(err) {
+        console.log(err.message);
+      });
   }
 
 };
